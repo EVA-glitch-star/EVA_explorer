@@ -1,37 +1,48 @@
-/*Binary explorer goal : build a C CLI tool that opens any file, loads it into memory, and lets you inspect the raw bytes*/
-#include <stdio.h>
+/*Binary explorer goal : a C CLI tool that opens any file, loads it into memory, and lets you inspect the raw bytes*/
+#include<stdio.h>
 #include<stdlib.h>
-int main(int argc, char *argv[]) {
-    if (argc <2) {
-        printf("Usage :%s<file_path>\n",argv[0]);
+int main(int argc, char *argv[]) { // argc tracks that count of arguments passed , argv is the array of pointers that store the pointers of the arguments passed
+    if (argc != 2) {
+        printf("Usage :%s <file_path>\n",argv[0]);
         return 1 ;
     }
-    const char* file_path  = argv[1];
+    const char* file_path  = argv[1]; //file path is a pointer that points to string stored at argv[1]
     FILE *file = fopen(file_path,"rb");
-    if (file == NULL) {
+    /*
+     FILE is a type.
+     fopen() creates and initializes FILE object that contains attributes helpful in reading data like cursor-position.
+     fopen() prototype : fopen(pointer of the file path string, mode).
+     fopen() returns the address of the FILE object if, it is successfully opened.
+     */
+    if (file == NULL) { //NULL in any case refers to NULL pointer, meaning that file does not point to anything.
         perror("failed to open file ");
         return 1 ;
     }
-    fseek(file,0,SEEK_END);
-    long file_size = ftell(file);
-    rewind(file);
+    fseek(file,0,SEEK_END); // '0' offset from end (moving cursor to the end) modifies the cursor position and updates it's value in the FILE object.
+    size_t file_size = (size_t)ftell(file); // ftell() returns the current cursor position which logically happens to be the file size by referencing the FILE object.
+    rewind(file);// moving cursor to the start.
 
     unsigned char* buffer = malloc(file_size);
-    if (buffer ==NULL) {
+    /*
+     memory has no type
+     the pointer gives it meaning ,in this it tells that this memory should be treated as array of raw bytes.
+     we use unsigned char to read raw byte.
+     */
+    if (buffer == NULL) {
         perror("memory allocation failed");
         fclose(file);
         return 1 ;
     }
 
-    size_t bytes_read = fread(buffer,1,file_size,file);
+    size_t bytes_read = fread(buffer,1,file_size,file); // bytes read = object read
     printf("File : %s\n",file_path);
-    printf("Size: %ld bytes \n", file_size);
-    printf("Bytes read: %zu \n\n", bytes_read);
+    printf("Size: %zu bytes \n", file_size);
+    printf("Bytes read: %zu \n\n", bytes_read); // zu - is format specifier for size_t
 
     printf("first 64 bytes : \n");
-    long limit = (file_size<64)? file_size:64;
-    for (long i = 0 ; i < limit ; i++) {
-        printf("%02x ", buffer[i]);
+    size_t limit = (file_size<64)? file_size:64;
+    for (size_t i = 0 ; i < limit ; i++) {
+        printf("%02x ", buffer[i]); // print the 2 - digit byte value, if not 2 then prefix the byte value with '0'.
     }
 
     printf("\n");
@@ -41,6 +52,4 @@ int main(int argc, char *argv[]) {
 
     return 0 ;
 
-
-    return 0;
 }
