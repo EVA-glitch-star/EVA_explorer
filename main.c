@@ -35,14 +35,19 @@ int main(int argc, char *argv[]) { // argc tracks that count of arguments passed
     }
 
     size_t bytes_read = fread(buffer,1,file_size,file); // bytes read = object read
-    printf("File : %s\n",file_path);
+    printf("\nFile : %s\n",file_path);
     printf("Size: %zu bytes \n", file_size);
     printf("Bytes read: %zu \n\n", bytes_read); // zu - is format specifier for size_t
 
-    printf("first 64 bytes : \n");
-    size_t limit = (file_size<64)? file_size:64;
+    printf("offset\t\t bytes                                             ASCII\n");
+    printf("------------------------------------------------------------------------------------------------------\n");
+    size_t limit = file_size;
     for (size_t i = 0 ; i < limit ; i++) {
-        printf("%02x ", buffer[i]); // print the 2 - digit byte value, if not 2 then prefix the byte value with '0'.
+        if (i%16==0) {
+            printf("\n");
+            printf("%08zx        ",i);
+        }
+        printf("%02X ", buffer[i]); // print the 2 - digit byte value, if not 2 then prefix the byte value with '0'
     }
 
     printf("\n");
