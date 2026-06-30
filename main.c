@@ -19,7 +19,15 @@ int main(int argc, char *argv[]) { // argc tracks that count of arguments passed
         return 1 ;
     }
     fseek(file,0,SEEK_END); // '0' offset from end (moving cursor to the end) modifies the cursor position and updates it's value in the FILE object.
-    size_t file_size = (size_t)ftell(file); // ftell() returns the current cursor position which logically happens to be the file size by referencing the FILE object.
+    size_t file_size;
+    if (ftell(file)!=-1) {
+         file_size = (size_t) ftell(file); // ftell() returns the current cursor position which logically happens to be the file size by referencing the FILE object.
+    }
+    else {
+        perror("ftell failed to return the current cursor position ");
+        fclose(file);
+        return -1 ;
+    }
     rewind(file);// moving cursor to the start.
 
     unsigned char* buffer = malloc(file_size);
@@ -39,16 +47,27 @@ int main(int argc, char *argv[]) { // argc tracks that count of arguments passed
     printf("Size: %zu bytes \n", file_size);
     printf("Bytes read: %zu \n\n", bytes_read); // zu - is format specifier for size_t
 
-    printf("offset\t\t bytes                                             ASCII\n");
+    printf("offset\t\t bytes                                                                     ASCII\n");
     printf("------------------------------------------------------------------------------------------------------\n");
-    size_t limit = file_size;
-    for (size_t i = 0 ; i < limit ; i++) {
-        if (i%16==0) {
-            printf("\n");
-            printf("%08zx        ",i);
+    size_t limit = bytes_read;
+
+    for (size_t i = 0; i < limit; i+=16) {
+        printf("\n");
+        printf("%08zu        ",i);
+        for (size_t j = i; j<i+16 && j<limit;j++) {
+            printf("%02x  ",buffer[j]);
         }
-        printf("%02X ", buffer[i]); // print the 2 - digit byte value, if not 2 then prefix the byte value with '0'
+        printf("       ");
+        for (size_t j = i; j<i+16 && j<limit;j++) {
+            if (buffer[j]>=32 && buffer[j]<=126) {
+                printf("%c",buffer[j]);
+            }
+            else {
+                printf(".");
+            }
+        }
     }
+
 
     printf("\n");
     free(buffer);
