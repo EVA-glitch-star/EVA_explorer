@@ -52,14 +52,13 @@ int main(int argc, char *argv[]) { // argc tracks that count of arguments passed
     size_t limit = bytes_read;
 
     for (size_t i = 0; i < limit; i+=16) {
-        int empty_columns = limit % 16 ;
         printf("\n");
         printf("%08zx        ",i);
         for (size_t j = i; j<i+16;j++) {
             if (j<limit) {
                 printf("%02X  ",buffer[j]);
             }
-            if (j>limit) {
+            if (j>=limit) {
                 printf("     ");
             }
         }
