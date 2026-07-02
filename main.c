@@ -1,83 +1,133 @@
-/*Binary explorer goal : a C CLI tool that opens any file, loads it into memory, and lets you inspect the raw bytes*/
+/* Binary explorer : a C CLI tool that opens any file, loads it into memory, and lets you inspect it's raw bytes*/
+
 #include<stdio.h>
 #include<stdlib.h>
-int main(int argc, char *argv[]) { // argc tracks that count of arguments passed , argv is the array of pointers that store the pointers of the arguments passed
+
+
+int main(int argc, char *argv[]){
     if (argc != 2) {
         printf("Usage :%s <file_path>\n",argv[0]);
-        return 1 ;
+        return -1 ;
     }
-    const char* file_path  = argv[1]; //file path is a pointer that points to string stored at argv[1]
+
+    const char *file_path  = argv[1];
+    /* argv[1] is a pointer to second argument
+     file_path = argv[1], is just argv[1] pointer copied to file_path pointer */
+
     FILE *file = fopen(file_path,"rb");
-    /*
-     FILE is a type.
-     fopen() creates and initializes FILE object that contains attributes helpful in reading data like cursor-position.
-     fopen() prototype : fopen(pointer of the file path string, mode).
-     fopen() returns the address of the FILE object if, it is successfully opened.
-     */
-    if (file == NULL) { //NULL in any case refers to NULL pointer, meaning that file does not point to anything.
+    /*  FILE is a type for file object.
+        fopen() -> it takes in 2 parameters : file_path pointer and the mode(in this case it is read binary mode)
+        fopen() -> opens file and creates/initializes the FILE object for it
+        fopen() -> returns the pointer to the FILE object that the C runtime maintains to manage operations on the opened file by saving state
+        fopen() -> returns NULL pointer in case of failure
+    */
+
+
+    if (file == NULL) {
+        /* NULL in any case refers to a NULL pointer, it means that the file pointer here does not point to anything */
         perror("failed to open file ");
-        return 1 ;
+        return -1 ;
     }
-    fseek(file,0,SEEK_END); // '0' offset from end (moving cursor to the end) modifies the cursor position and updates it's value in the FILE object.
+
+    /* perror() : it is a very useful function, it appends user defined error message with descriptive error message of its own which it derives by referring the errno
+        when a system call or a library function fails,  an appropriate error code is produced which then C runtime stores errno(C specific)*/
+
+
+   if(fseek(file,0,SEEK_END) != 0 ) {
+       /* we use fseek() function to change the cursor position maintained by the FILE object - in this case SEEK_END moves cursor to the end of file
+       the '0' argument inside fseek() function is called offset and is used to move by that many positions, in this case 0 position so cursor still remains at the end of the file*/
+       perror("ftell failed, cursor was not moved to the end of file");
+       fclose(file);
+       return -1 ;
+   }
+
     size_t file_size;
-    if (ftell(file)!=-1) {
-         file_size = (size_t) ftell(file); // ftell() returns the current cursor position which logically happens to be the file size by referencing the FILE object.
+    if (ftell(file)!=-1){ // if ftell() fails it returns -1
+         file_size = (size_t) ftell(file);
+        /* ftell() returns the current cursor position, and since we previously moved the cursor to the end of the file, the value returned by ftell in this case logically happens to be the
+        file size */
     }
     else {
-        perror("ftell failed to return the current cursor position ");
+        perror("ftell failed to return the current cursor position");
         fclose(file);
         return -1 ;
     }
-    rewind(file);// moving cursor to the start.
+    rewind(file);// moving cursor to the beginning of the file.
 
     unsigned char* buffer = malloc(file_size);
-    /*
-     memory has no type
-     the pointer gives it meaning ,in this it tells that this memory should be treated as array of raw bytes.
-     we use unsigned char to read raw byte.
+    /*the syntax here means that buffer pointer points to starting location of the reserved memory block,and the memory block units tend to store unsigned character type elements
+     we have chosen unsigned char because we don't want the compiler to interpret the data with a sign, as raw bytes don't have a sign.
      */
-    if (buffer == NULL) {
+    if (buffer == NULL){ // if memory allocation fails malloc() returns a NULL pointer
         perror("memory allocation failed");
         fclose(file);
-        return 1 ;
+        return -1 ;
     }
 
-    size_t bytes_read = fread(buffer,1,file_size,file); // bytes read = object read
-    printf("\nFile : %s\n",file_path);
-    printf("Size: %zu bytes \n", file_size);
-    printf("Bytes read: %zu \n\n", bytes_read); // zu - is format specifier for size_t
+    size_t bytes_read = fread(buffer,1,file_size,file);
+    /* function prototype of fread() -> (pointer to where bytes should be copied to, object size, number of objects, pointer to where bytes should be copied from)
+        fread() doesn't directly return number of bytes, it in-fact returns number of objects successfully read
+        here the object size is 1 as sizeof(char) is 1 .
+     */
 
-    printf("offset\t\t bytes                                                                     ASCII\n");
-    printf("------------------------------------------------------------------------------------------------------\n");
+
+    /* ---------------------------------------------------------------------------------LOGIC------------------------------------------------------------------------------------------ */
+
+
+    printf("\nfile name : %s",file_path);
+    printf("\nfile size : %zu bytes", file_size);
+    printf("\nbytes read : %zu\n\n", bytes_read);
+
+    printf("OFFSET             BYTES                                                                            ASCII\n");
+    printf("----------------------------------------------------------------------------------------------------------------\n");
+
     size_t limit = bytes_read;
-
     for (size_t i = 0; i < limit; i+=16) {
         printf("\n");
-        printf("%08zx        ",i);
+        printf("%08zX        ",i);
+
         for (size_t j = i; j<i+16;j++) {
-            if (j<limit) {
-                printf("%02X  ",buffer[j]);
-            }
-            if (j>=limit) {
-                printf("     ");
-            }
+
+                if (j%4==0) {
+                    printf("  "); // gap after printing 4 bytes
+                }
+
+                if (j<limit) {
+                    printf("%02X  ",buffer[j]); //printing bytes in hexadecimal
+                }
+
+                if (j>=limit) {
+                    printf("     ");// aligning bytes - if bytes read are not perfectly divisible by 16 then to maintain 16 byte structure we append print with spaces
+                }
+
         }
-        printf("       ");
+
+            printf("       "); // gap between bytes zone and ascii zone
+
+
         for (size_t j = i; j<i+16 && j<limit;j++) {
-            if (buffer[j]>=32 && buffer[j]<=126) {
+
+            if (buffer[j]>=32 && buffer[j]<=126) { // printable character range
                 printf("%c",buffer[j]);
             }
+
             else {
-                printf(".");
+                printf("."); // replacing unprintable character with '.'
             }
         }
     }
 
+    printf("\n\n");
 
-    printf("\n");
-    free(buffer);
-    fclose(file);
+    printf("file size : %zu\n",file_size);
+    printf("bytes read : %zu\n",bytes_read);
 
+    free(buffer);// clearing memory
+
+    if (fclose(file)==EOF) {
+        // if fclose() function fails it returns EOF(end of file) value
+        perror("Failed to close file");
+    }
 
     return 0 ;
 
