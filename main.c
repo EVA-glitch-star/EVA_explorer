@@ -2,13 +2,27 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-
+#include<string.h>
 
 int main(int argc, char *argv[]){
-    if (argc != 2) {
-        printf("Usage :%s <file_path>\n",argv[0]);
+    if (argc != 2 && argc != 4) {
+        printf("Usage :%s <file_path> [--limit bytes]\n",argv[0]);
         return -1 ;
     }
+
+    size_t limit = 0; // 0 means no limit
+
+    if (argc == 4) {
+        if (strcmp(argv[2],"--limit")==0){
+            limit = strtoul(argv[3],NULL,10);
+        }
+        else {
+            printf("error : unknown flag\n");
+            return -1 ;
+        }
+    }
+
+
 
     const char *file_path  = argv[1];
     /* argv[1] is a pointer to second argument
@@ -33,6 +47,7 @@ int main(int argc, char *argv[]){
         when a system call or a library function fails,  an appropriate error code is produced which then C runtime stores errno(C specific)*/
 
 
+
    if(fseek(file,0,SEEK_END) != 0 ) {
        /* we use fseek() function to change the cursor position maintained by the FILE object - in this case SEEK_END moves cursor to the end of file
        the '0' argument inside fseek() function is called offset and is used to move by that many positions, in this case 0 position so cursor still remains at the end of the file*/
@@ -42,8 +57,9 @@ int main(int argc, char *argv[]){
    }
 
     size_t file_size;
-    if (ftell(file)!=-1){ // if ftell() fails it returns -1
-         file_size = (size_t) ftell(file);
+    long pos = ftell(file);
+    if (pos!=-1){ // if ftell() fails it returns -1
+         file_size = (size_t)pos;
         /* ftell() returns the current cursor position, and since we previously moved the cursor to the end of the file, the value returned by ftell in this case logically happens to be the
         file size */
     }
@@ -65,6 +81,16 @@ int main(int argc, char *argv[]){
     }
 
     size_t bytes_read = fread(buffer,1,file_size,file);
+
+    if (bytes_read != file_size) {
+        perror("fread failed");
+        free(buffer);
+        fclose(file);
+        return -1 ;
+    }
+
+
+
     /* function prototype of fread() -> (pointer to where bytes should be copied to, object size, number of objects, pointer to where bytes should be copied from)
         fread() doesn't directly return number of bytes, it in-fact returns number of objects successfully read
         here the object size is 1 as sizeof(char) is 1 .
@@ -81,7 +107,11 @@ int main(int argc, char *argv[]){
     printf("OFFSET             BYTES                                                                            ASCII\n");
     printf("----------------------------------------------------------------------------------------------------------------\n");
 
-    size_t limit = bytes_read;
+
+    if (limit ==  0 || limit>bytes_read) {
+        limit = bytes_read;
+    }
+
     for (size_t i = 0; i < limit; i+=16) {
         printf("\n");
         printf("%08zX        ",i);
@@ -120,7 +150,7 @@ int main(int argc, char *argv[]){
     printf("\n\n");
 
     printf("file size : %zu\n",file_size);
-    printf("bytes read : %zu\n",bytes_read);
+    printf("bytes read : %zu\n\n",bytes_read);
 
     free(buffer);// clearing memory
 
