@@ -3,18 +3,20 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-
+// ./binary_explorer0 main.c1 --offset2 ()3 --limit4 ()5
 int main(int argc, char *argv[]){
-    if (argc != 2 && argc != 4) {
-        printf("Usage :%s <file_path> [--limit bytes]\n",argv[0]);
+    if (argc != 2 && argc != 6) {
+        printf("Usage :%s <file_path> [--offset start_in_hex --limit bytes]\n",argv[0]);
         return -1 ;
     }
 
     size_t limit = 0; // 0 means no limit
+    size_t offset = 0 ;
 
-    if (argc == 4) {
-        if (strcmp(argv[2],"--limit")==0){
-            limit = strtoul(argv[3],NULL,10);
+    if (argc == 6) {
+        if (strcmp(argv[4],"--limit")==0 && strcmp(argv[2],"--offset") == 0) {
+            limit = atoi(argv[5]);
+            offset = strtoul(argv[3],NULL,16);
         }
         else {
             printf("error : unknown flag\n");
@@ -46,15 +48,24 @@ int main(int argc, char *argv[]){
     /* perror() : it is a very useful function, it appends user defined error message with descriptive error message of its own which it derives by referring the errno
         when a system call or a library function fails,  an appropriate error code is produced which then C runtime stores errno(C specific)*/
 
-
-
-   if(fseek(file,0,SEEK_END) != 0 ) {
-       /* we use fseek() function to change the cursor position maintained by the FILE object - in this case SEEK_END moves cursor to the end of file
-       the '0' argument inside fseek() function is called offset and is used to move by that many positions, in this case 0 position so cursor still remains at the end of the file*/
-       perror("ftell failed, cursor was not moved to the end of file");
-       fclose(file);
-       return -1 ;
-   }
+    if (offset!=0) {
+        if(fseek(file,offset,SEEK_SET) != 0 ) {
+            /* we use fseek() function to change the cursor position maintained by the FILE object - in this case SEEK_END moves cursor to the end of file
+            the '0' argument inside fseek() function is called offset and is used to move by that many positions, in this case 0 position so cursor still remains at the end of the file*/
+            perror("ftell failed, cursor was not moved to the end of file");
+            fclose(file);
+            return -1 ;
+        }
+    }
+    else {
+        if(fseek(file,0,SEEK_END) != 0 ) {
+            /* we use fseek() function to change the cursor position maintained by the FILE object - in this case SEEK_END moves cursor to the end of file
+            the '0' argument inside fseek() function is called offset and is used to move by that many positions, in this case 0 position so cursor still remains at the end of the file*/
+            perror("ftell failed, cursor was not moved to the end of file");
+            fclose(file);
+            return -1 ;
+        }
+    }
 
     size_t file_size;
     long pos = ftell(file);
@@ -70,7 +81,13 @@ int main(int argc, char *argv[]){
     }
     rewind(file);// moving cursor to the beginning of the file.
 
-    unsigned char* buffer = malloc(file_size);
+    unsigned char* buffer;
+    if (argc == 6) {
+        buffer = malloc(limit);
+    }
+    else {
+        buffer = malloc(file_size);
+    }
     /*the syntax here means that buffer pointer points to starting location of the reserved memory block,and the memory block units tend to store unsigned character type elements
      we have chosen unsigned char because we don't want the compiler to interpret the data with a sign, as raw bytes don't have a sign.
      */
@@ -80,13 +97,26 @@ int main(int argc, char *argv[]){
         return -1 ;
     }
 
-    size_t bytes_read = fread(buffer,1,file_size,file);
+    size_t bytes_read ;
+if (limit!=0) {
+    bytes_read = fread(buffer,1,limit,file);
 
-    if (bytes_read != file_size) {
+    if (bytes_read != limit) {
         perror("fread failed");
         free(buffer);
         fclose(file);
         return -1 ;
+    }
+}
+    else {
+         bytes_read = fread(buffer,1,file_size,file);
+
+        if (bytes_read != file_size) {
+            perror("fread failed");
+            free(buffer);
+            fclose(file);
+            return -1 ;
+        }
     }
 
 
@@ -112,7 +142,7 @@ int main(int argc, char *argv[]){
         limit = bytes_read;
     }
 
-    for (size_t i = 0; i < limit; i+=16) {
+    for (size_t i = offset ; i < offset + limit; i+=16) {
         printf("\n");
         printf("%08zX        ",i);
 
@@ -122,11 +152,11 @@ int main(int argc, char *argv[]){
                     printf("  "); // gap after printing 4 bytes
                 }
 
-                if (j<limit) {
+                if (j<offset+limit) {
                     printf("%02X  ",buffer[j]); //printing bytes in hexadecimal
                 }
 
-                if (j>=limit) {
+                if (j>=offset + limit) {
                     printf("     ");// aligning bytes - if bytes read are not perfectly divisible by 16 then to maintain 16 byte structure we append print with spaces
                 }
 
