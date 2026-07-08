@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
     /*the syntax here means that buffer pointer points to starting location of the reserved memory block,and the memory block units tend to store unsigned character type elements
      we have chosen unsigned char because we don't want the compiler to interpret the data with a sign, as raw bytes don't have a sign.
      */
+
     if (buffer == NULL) {
         // if memory allocation fails malloc() returns a NULL pointer
         perror("memory allocation failed");
@@ -156,11 +157,9 @@ int main(int argc, char *argv[]) {
         "----------------------------------------------------------------------------------------------------------------\n");
 
 
-    if (limit == 0) {
-        limit = file_size;
-    }
 
-    for (size_t i = 0; i < limit; i += 16) {
+
+    for (size_t i = 0; i < bytes_read; i += 16) {
         printf("\n");
         printf("%08zX        ", i + offset);
 
@@ -169,11 +168,11 @@ int main(int argc, char *argv[]) {
                 printf("  "); // gap after printing 4 bytes
             }
 
-            if (j < limit) {
+            if (j < bytes_read) {
                 printf("%02X  ", buffer[j]); //printing bytes in hexadecimal
             }
 
-            if (j >= limit) {
+            else{
                 printf("     ");
                 // aligning bytes - if bytes read are not perfectly divisible by 16 then to maintain 16 byte structure we append print with spaces
             }
@@ -182,7 +181,7 @@ int main(int argc, char *argv[]) {
         printf("       "); // gap between bytes zone and ascii zone
 
 
-        for (size_t j = i; j < i + 16 && j < limit; j++) {
+        for (size_t j = i; j < i + 16 && j < bytes_read; j++) {
             if (buffer[j] >= 32 && buffer[j] <= 126) {
                 // printable character range
                 printf("%c", buffer[j]);
